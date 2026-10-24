@@ -1,0 +1,141 @@
+{
+  "id": "04-tight-roe",
+  "title": "Retained authority, tight PID",
+  "summary": "The same fast chain, but release authority is retained two echelons up and the delegation limit is raised. Watch what happens to the clock.",
+  "tags": ["policy", "centralised", "escalation", "high-threshold"],
+  "origin": { "lat": 0.0, "lon": 0.0 },
+  "target": {
+    "label": "TRK-1042",
+    "kind": "mobile ground",
+    "classification": "hostile",
+    "mobility": "mobile",
+    "description": "Synthetic track for latency analysis. Not a real entity, location or unit."
+  },
+  "evidence": {
+    "prior_hostile": 0.18,
+    "beta_hostile": { "dist": "beta", "a": 18, "b": 2 },
+    "beta_benign": { "dist": "beta", "a": 1.8, "b": 2.6 }
+  },
+  "policy": {
+    "pid_threshold": 0.90,
+    "escalation_threshold": 0.96,
+    "release_authority": "operational",
+    "roe_posture": "defensive",
+    "cde_level": "CDE-1",
+    "cde_allowance": "CDE-2",
+    "max_recycles": 4
+  },
+  "nodes": [
+    {
+      "id": "cue",
+      "kind": "sensor",
+      "label": "Cue & detect",
+      "actor": "Space / air sensors",
+      "phase": "find",
+      "duration": { "dist": "lognormal", "median": 90, "sigma": 0.45 },
+      "note": ""
+    },
+    {
+      "id": "fuse",
+      "kind": "fusion",
+      "label": "Auto-fusion of 3 tracks",
+      "actor": "Edge fusion node",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 3, "mode": 8, "max": 25 },
+      "note": ""
+    },
+    {
+      "id": "geolocate",
+      "kind": "analysis",
+      "label": "Precision geolocation",
+      "actor": "Analyst + model",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 15, "mode": 40, "max": 120 },
+      "note": ""
+    },
+    {
+      "id": "fallback-geolocate",
+      "kind": "analysis",
+      "label": "Fallback geolocation",
+      "actor": "Analyst, single sensor",
+      "phase": "fix",
+      "duration": { "dist": "lognormal", "median": 180, "sigma": 0.5 },
+      "note": ""
+    },
+    {
+      "id": "pid",
+      "kind": "analysis",
+      "label": "Classifier confirm",
+      "actor": "Analyst team, human on the loop",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 60, "sigma": 0.45 },
+      "note": ""
+    },
+    {
+      "id": "gate",
+      "kind": "decision",
+      "label": "Tactical review",
+      "actor": "Tactical commander",
+      "phase": "target",
+      "echelon": "tactical",
+      "duration": { "dist": "lognormal", "median": 30, "sigma": 0.4 },
+      "note": "Mostly deciding whether to forward the package."
+    },
+    {
+      "id": "auth",
+      "kind": "decision",
+      "label": "Operational release",
+      "actor": "Operational C2",
+      "phase": "target",
+      "echelon": "operational",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.6 },
+      "note": "Staffing, legal review and the commander's own battle rhythm."
+    },
+    {
+      "id": "tasking",
+      "kind": "tasking",
+      "label": "Machine-to-machine tasking",
+      "actor": "Mission system",
+      "phase": "engage",
+      "duration": { "dist": "triangular", "min": 2, "mode": 6, "max": 20 },
+      "note": ""
+    },
+    {
+      "id": "execute",
+      "kind": "effector",
+      "label": "Effect delivery window",
+      "actor": "Effector (abstract)",
+      "phase": "engage",
+      "duration": { "dist": "lognormal", "median": 150, "sigma": 0.3 },
+      "note": "Abstracted as a delay only. No weapon modelling is performed anywhere in this tool."
+    },
+    {
+      "id": "bda",
+      "kind": "assessment",
+      "label": "Automated BDA + confirm",
+      "actor": "ISR + analyst",
+      "phase": "assess",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.5 },
+      "note": ""
+    }
+  ],
+  "edges": [
+    { "from": "cue", "to": "fuse", "latency": 10, "note": "" },
+    { "from": "fuse", "to": "geolocate", "p": 0.9, "latency": 8, "note": "" },
+    { "from": "fuse", "to": "fallback-geolocate", "p": 0.1, "latency": 12, "note": "" },
+    { "from": "fallback-geolocate", "to": "pid", "latency": 15, "note": "" },
+    { "from": "geolocate", "to": "pid", "latency": 12, "note": "" },
+    { "from": "pid", "to": "gate", "latency": 10, "note": "" },
+    { "from": "gate", "to": "tasking", "label": "approve", "latency": 8, "note": "Released under delegation" },
+    { "from": "gate", "to": "auth", "label": "escalate", "latency": { "dist": "triangular", "min": 120, "mode": 330, "max": 720 }, "note": "Staff package to operational C2" },
+    { "from": "gate", "to": "cue", "label": "reject", "latency": 30, "note": "Automatic re-cue" },
+    { "from": "gate", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "auth", "to": "tasking", "label": "approve", "latency": { "dist": "triangular", "min": 60, "mode": 180, "max": 420 }, "note": "Release from operational C2" },
+    { "from": "auth", "to": "cue", "label": "reject", "latency": 120, "note": "Re-task" },
+    { "from": "auth", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "tasking", "to": "execute", "latency": 5, "note": "" },
+    { "from": "execute", "to": "bda", "latency": 45, "note": "" },
+    { "from": "bda", "to": "END" }
+  ],
+  "notes": "Purpose: isolate policy as a latency source. The evidence model and the sensors are identical to 02, so any difference is produced by authority and thresholds alone. The expected finding is that escalation adds minutes and changes almost no decisions, because the higher echelon applies the same numeric threshold. That is a procedural cost, not an informational one."
+}

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kchain — kill-chain latency &amp; authority console</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div id="banner" class="banner">UNCLASSIFIED // SYNTHETIC DATA // TRAINING &amp; ANALYSIS ONLY</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">KC</div>
+    <div>
+      <div class="brand-title">kchain</div>
+      <div class="brand-sub">kill-chain latency &amp; authority model</div>
+    </div>
+  </div>
+
+  <nav id="tabs" class="tabs" aria-label="scenarios"></nav>
+
+  <div class="controls">
+    <label class="field">
+      <span>runs</span>
+      <select id="runs">
+        <option value="2000">2,000</option>
+        <option value="4000" selected>4,000</option>
+        <option value="8000">8,000</option>
+        <option value="16000">16,000</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>seed</span>
+      <input id="seed" type="number" value="7" min="0" step="1" />
+    </label>
+    <label class="field checkbox">
+      <input id="sensitivity" type="checkbox" checked />
+      <span>sensitivity</span>
+    </label>
+    <button id="run" class="primary">Run</button>
+  </div>
+</header>
+
+<div id="error" class="error hidden"></div>
+
+<main id="app" class="grid">
+  <section class="card span-3" id="card-kpi">
+    <div class="card-head">
+      <h2 id="scenario-title">loading…</h2>
+      <div class="card-actions">
+        <span id="scenario-meta" class="muted"></span>
+      </div>
+    </div>
+    <p id="scenario-summary" class="summary"></p>
+    <div id="kpis" class="kpis"></div>
+  </section>
+
+  <section class="card span-3" id="card-chain">
+    <div class="card-head">
+      <h2>Chain topology</h2>
+      <div class="legend" id="phase-legend"></div>
+    </div>
+    <div class="graph-wrap"><svg id="graph"></svg></div>
+    <div id="node-detail" class="node-detail hidden"></div>
+    <p class="hint">Box colour is the F2T2EA phase; the bar under each box is its mean share of the cycle. Dashed red edges are re-task cycles — they are the reason the tail is long. Click a box for detail; scroll sideways if the chain is wider than the card.</p>
+  </section>
+
+  <section class="card" id="card-insight">
+    <div class="card-head"><h2>Findings</h2></div>
+    <ul id="insights" class="insights"></ul>
+  </section>
+
+  <section class="card span-2" id="card-hist">
+    <div class="card-head">
+      <h2>End-to-end latency, engaged runs</h2>
+      <div class="muted" id="hist-meta"></div>
+    </div>
+    <svg id="histogram"></svg>
+  </section>
+
+  <section class="card" id="card-phases">
+    <div class="card-head"><h2>Where the clock goes</h2></div>
+    <div id="phase-bars" class="phase-bars"></div>
+    <div class="card-head sub"><h2>Top activities</h2></div>
+    <ol id="contrib-list" class="contrib"></ol>
+  </section>
+
+  <section class="card span-2" id="card-timeline">
+    <div class="card-head">
+      <h2>One simulated cycle</h2>
+      <div class="muted" id="timeline-meta"></div>
+    </div>
+    <svg id="timeline"></svg>
+    <div id="decisions" class="decisions"></div>
+  </section>
+
+  <section class="card" id="card-policy">
+    <div class="card-head"><h2>Policy in force</h2></div>
+    <div class="sliders">
+      <label class="slider">
+        <span>PID threshold <b id="pid-value"></b></span>
+        <input id="pid-slider" type="range" min="0.50" max="0.99" step="0.01" />
+      </label>
+      <label class="slider">
+        <span>Delegation limit <b id="esc-value"></b></span>
+        <input id="esc-slider" type="range" min="0.50" max="0.99" step="0.01" />
+      </label>
+    </div>
+    <ul id="policy-rules" class="rules"></ul>
+    <p class="hint">Move the threshold: latency and abandonment are recomputed over the full simulation, not interpolated.</p>
+  </section>
+
+  <section class="card span-2" id="card-tornado">
+    <div class="card-head">
+      <h2>If this activity were twice as fast</h2>
+      <div class="muted">change in p95, seconds</div>
+    </div>
+    <svg id="tornado"></svg>
+  </section>
+
+  <section class="card span-3" id="card-tradeoff">
+    <div class="card-head">
+      <h2>PID threshold trade-off</h2>
+      <div class="muted">every point is a full re-simulation of the chain, not an interpolation</div>
+    </div>
+    <div class="trade-grid">
+      <div>
+        <div class="trade-head">
+          <h3>Tail vs threshold</h3>
+          <div class="chart-legend">
+            <span><i style="background:#4ea1ff"></i>p95 latency</span>
+            <span><i style="background:#ff6b6b"></i>abandoned</span>
+          </div>
+        </div>
+        <svg id="trade-a"></svg>
+      </div>
+      <div>
+        <div class="trade-head">
+          <h3>Evidence quality</h3>
+          <div class="chart-legend">
+            <span><i style="background:#f5b642"></i>P(hostile | release)</span>
+            <span><i style="background:#8b98a8"></i>benign releases / 1,000</span>
+          </div>
+        </div>
+        <svg id="trade-b"></svg>
+      </div>
+    </div>
+    <p class="hint" id="trade-note"></p>
+  </section>
+
+  <section class="card span-3" id="card-audit">
+    <div class="card-head">
+      <h2>Decision log</h2>
+      <div class="card-actions"><span id="audit-badge" class="badge"></span></div>
+    </div>
+    <table id="audit-table" class="audit"></table>
+    <p class="hint">Each record is hash-chained to its predecessor. Editing a record breaks the chain at that sequence number. Synthetic records only.</p>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>kchain <span id="version" class="muted"></span></span>
+  <span class="muted">Process model only. No weapon effects, weaponeering or real targets. Not for operational use.</span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

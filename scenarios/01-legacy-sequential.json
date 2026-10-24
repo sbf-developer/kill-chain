@@ -1,0 +1,130 @@
+{
+  "id": "01-legacy-sequential",
+  "title": "Legacy sequential chain",
+  "summary": "One sensor, voice handoffs, sequential single-echelon PID review. The baseline most forces actually start from.",
+  "tags": ["baseline", "single-sensor", "manual", "voice"],
+  "origin": { "lat": 0.0, "lon": 0.0 },
+  "target": {
+    "label": "TRK-1042",
+    "kind": "mobile ground",
+    "classification": "hostile",
+    "mobility": "mobile",
+    "description": "Synthetic track for latency analysis. Not a real entity, location or unit."
+  },
+  "evidence": {
+    "prior_hostile": 0.18,
+    "beta_hostile": { "dist": "beta", "a": 14, "b": 2 },
+    "beta_benign": { "dist": "beta", "a": 1.8, "b": 2.6 }
+  },
+  "policy": {
+    "pid_threshold": 0.85,
+    "escalation_threshold": 0.95,
+    "release_authority": "operational",
+    "roe_posture": "defensive",
+    "cde_level": "CDE-1",
+    "cde_allowance": "CDE-2",
+    "max_recycles": 5
+  },
+  "nodes": [
+    {
+      "id": "detect",
+      "kind": "sensor",
+      "label": "Dwell & detect",
+      "actor": "MQ-9 EO/IR",
+      "phase": "find",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.55 },
+      "note": "Time on station before the first usable detection."
+    },
+    {
+      "id": "localize",
+      "kind": "analysis",
+      "label": "Manual mensuration",
+      "actor": "DCGS analyst",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 45, "mode": 120, "max": 360 },
+      "note": "Analyst measures the full-motion video by hand to derive a grid."
+    },
+    {
+      "id": "maintain",
+      "kind": "sensor",
+      "label": "Maintain custody",
+      "actor": "MQ-9 sensor operator",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 120, "sigma": 0.4 },
+      "note": "Keep the track while the target moves and the geometry changes."
+    },
+    {
+      "id": "pid",
+      "kind": "analysis",
+      "label": "Two-person PID review",
+      "actor": "DCGS / J2",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 180, "sigma": 0.5 },
+      "note": "Independent confirmation of identity before the package goes forward."
+    },
+    {
+      "id": "gate",
+      "kind": "decision",
+      "label": "Release authority review",
+      "actor": "Tactical commander",
+      "phase": "target",
+      "echelon": "tactical",
+      "duration": { "dist": "lognormal", "median": 90, "sigma": 0.6 },
+      "note": "The legal decision point. Everything upstream exists to inform it."
+    },
+    {
+      "id": "gate-higher",
+      "kind": "decision",
+      "label": "Elevated release review",
+      "actor": "Operational C2",
+      "phase": "target",
+      "echelon": "operational",
+      "duration": { "dist": "lognormal", "median": 300, "sigma": 0.7 },
+      "note": "Only reached when confidence is high enough to meet threshold but below the delegation limit."
+    },
+    {
+      "id": "tasking",
+      "kind": "tasking",
+      "label": "Build & transmit tasking",
+      "actor": "Fires cell",
+      "phase": "engage",
+      "duration": { "dist": "triangular", "min": 30, "mode": 90, "max": 240 },
+      "note": "Manual construction and readback of the tasking order."
+    },
+    {
+      "id": "execute",
+      "kind": "effector",
+      "label": "Effect delivery window",
+      "actor": "Effector (abstract)",
+      "phase": "engage",
+      "duration": { "dist": "lognormal", "median": 150, "sigma": 0.3 },
+      "note": "Abstracted as a delay only. No weapon modelling is performed anywhere in this tool."
+    },
+    {
+      "id": "assess",
+      "kind": "assessment",
+      "label": "BDA collect & report",
+      "actor": "ISR + analyst",
+      "phase": "assess",
+      "duration": { "dist": "lognormal", "median": 480, "sigma": 0.6 },
+      "note": "Re-attack decision depends on this, and it is usually the slowest single step."
+    }
+  ],
+  "edges": [
+    { "from": "detect", "to": "localize", "latency": { "dist": "triangular", "min": 30, "mode": 60, "max": 180 }, "note": "Voice cue to analysis cell" },
+    { "from": "localize", "to": "maintain", "latency": { "dist": "triangular", "min": 20, "mode": 45, "max": 120 }, "note": "Track handoff over chat" },
+    { "from": "maintain", "to": "pid", "latency": { "dist": "triangular", "min": 15, "mode": 40, "max": 90 }, "note": "Track pushed to PID queue" },
+    { "from": "pid", "to": "gate", "latency": { "dist": "triangular", "min": 20, "mode": 50, "max": 150 }, "note": "PID package to commander" },
+    { "from": "gate", "to": "tasking", "label": "approve", "latency": { "dist": "triangular", "min": 30, "mode": 90, "max": 240 }, "note": "Release transmitted to fires cell" },
+    { "from": "gate", "to": "detect", "label": "reject", "latency": { "dist": "triangular", "min": 60, "mode": 150, "max": 420 }, "note": "Re-task the sensor by voice" },
+    { "from": "gate", "to": "gate-higher", "label": "escalate", "latency": { "dist": "triangular", "min": 60, "mode": 180, "max": 480 }, "note": "Elevate to operational C2" },
+    { "from": "gate", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "gate-higher", "to": "tasking", "label": "approve", "latency": { "dist": "triangular", "min": 45, "mode": 120, "max": 300 }, "note": "Release from operational C2" },
+    { "from": "gate-higher", "to": "detect", "label": "reject", "latency": { "dist": "triangular", "min": 60, "mode": 150, "max": 420 }, "note": "Re-task the sensor" },
+    { "from": "gate-higher", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "tasking", "to": "execute", "latency": { "dist": "triangular", "min": 5, "mode": 15, "max": 45 }, "note": "Tasking order transmission" },
+    { "from": "execute", "to": "assess", "latency": { "dist": "triangular", "min": 60, "mode": 180, "max": 420 }, "note": "Assessment cue to ISR" },
+    { "from": "assess", "to": "END" }
+  ],
+  "notes": "Purpose: establish the cost of the manual, sequential baseline. Expect a wide p95/p50 ratio driven almost entirely by re-identification cycles, and a long assess phase that does not belong to the 'kill' part of the chain but still consumes the cycle."
+}

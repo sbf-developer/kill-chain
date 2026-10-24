@@ -1,0 +1,126 @@
+{
+  "id": "02-fused-killweb",
+  "title": "Fused kill web",
+  "summary": "Multi-INT fusion, model-assisted geolocation, delegated release and machine-speed tasking on the same target class.",
+  "tags": ["modernised", "fusion", "delegated-authority", "m2m"],
+  "origin": { "lat": 0.0, "lon": 0.0 },
+  "target": {
+    "label": "TRK-1042",
+    "kind": "mobile ground",
+    "classification": "hostile",
+    "mobility": "mobile",
+    "description": "Synthetic track for latency analysis. Not a real entity, location or unit."
+  },
+  "evidence": {
+    "prior_hostile": 0.18,
+    "beta_hostile": { "dist": "beta", "a": 18, "b": 2 },
+    "beta_benign": { "dist": "beta", "a": 1.8, "b": 2.6 }
+  },
+  "policy": {
+    "pid_threshold": 0.80,
+    "escalation_threshold": 0.92,
+    "release_authority": "tactical",
+    "roe_posture": "defensive",
+    "cde_level": "CDE-1",
+    "cde_allowance": "CDE-2",
+    "max_recycles": 5
+  },
+  "nodes": [
+    {
+      "id": "cue",
+      "kind": "sensor",
+      "label": "Cue & detect",
+      "actor": "Space / air sensors",
+      "phase": "find",
+      "duration": { "dist": "lognormal", "median": 90, "sigma": 0.45 },
+      "note": "Persistent coverage shrinks the time to first detection."
+    },
+    {
+      "id": "fuse",
+      "kind": "fusion",
+      "label": "Auto-fusion of 3 tracks",
+      "actor": "Edge fusion node",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 3, "mode": 8, "max": 25 },
+      "note": "Machine correlation of independent sensor reports."
+    },
+    {
+      "id": "geolocate",
+      "kind": "analysis",
+      "label": "Precision geolocation",
+      "actor": "Analyst + model",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 15, "mode": 40, "max": 120 },
+      "note": "Model-assisted mensuration with a human sanity check."
+    },
+    {
+      "id": "fallback-geolocate",
+      "kind": "analysis",
+      "label": "Fallback geolocation",
+      "actor": "Analyst, single sensor",
+      "phase": "fix",
+      "duration": { "dist": "lognormal", "median": 180, "sigma": 0.5 },
+      "note": "Reached when fusion degrades to one sensor. The graceful-degradation branch."
+    },
+    {
+      "id": "pid",
+      "kind": "analysis",
+      "label": "Classifier confirm",
+      "actor": "Analyst team, human on the loop",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 60, "sigma": 0.45 },
+      "note": "Human confirms a machine-produced confidence, not a machine decision."
+    },
+    {
+      "id": "gate",
+      "kind": "decision",
+      "label": "Delegated release",
+      "actor": "Tactical commander",
+      "phase": "target",
+      "duration": { "dist": "lognormal", "median": 30, "sigma": 0.4 },
+      "note": "Authority pre-delegated for this target class; the decision is confirm-or-hold, not find-the-commander."
+    },
+    {
+      "id": "tasking",
+      "kind": "tasking",
+      "label": "Machine-to-machine tasking",
+      "actor": "Mission system",
+      "phase": "engage",
+      "duration": { "dist": "triangular", "min": 2, "mode": 6, "max": 20 },
+      "note": "Structured order, no voice readback."
+    },
+    {
+      "id": "execute",
+      "kind": "effector",
+      "label": "Effect delivery window",
+      "actor": "Effector (abstract)",
+      "phase": "engage",
+      "duration": { "dist": "lognormal", "median": 150, "sigma": 0.3 },
+      "note": "Abstracted as a delay only. No weapon modelling is performed anywhere in this tool."
+    },
+    {
+      "id": "bda",
+      "kind": "assessment",
+      "label": "Automated BDA + confirm",
+      "actor": "ISR + analyst",
+      "phase": "assess",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.5 },
+      "note": "Faster than manual, still the largest single block in the chain."
+    }
+  ],
+  "edges": [
+    { "from": "cue", "to": "fuse", "latency": 10, "note": "Sensor report to fusion" },
+    { "from": "fuse", "to": "geolocate", "p": 0.9, "latency": 8, "note": "Fused track to mensuration" },
+    { "from": "fuse", "to": "fallback-geolocate", "p": 0.1, "latency": 12, "note": "Fusion degraded to a single sensor" },
+    { "from": "fallback-geolocate", "to": "pid", "latency": 15, "note": "Fallback track forward" },
+    { "from": "geolocate", "to": "pid", "latency": 12, "note": "Grid to classifier" },
+    { "from": "pid", "to": "gate", "latency": 10, "note": "Evidence package to release authority" },
+    { "from": "gate", "to": "tasking", "label": "approve", "latency": 8, "note": "Release" },
+    { "from": "gate", "to": "cue", "label": "reject", "latency": 30, "note": "Automatic re-cue" },
+    { "from": "gate", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "tasking", "to": "execute", "latency": 5, "note": "Order to effector" },
+    { "from": "execute", "to": "bda", "latency": 45, "note": "Assessment cue" },
+    { "from": "bda", "to": "END" }
+  ],
+  "notes": "Purpose: show what integration, better evidence and delegated authority actually buy. Better evidence also cuts re-cycles, which is where most of the tail reduction comes from -- a point that sensor-only upgrades miss."
+}

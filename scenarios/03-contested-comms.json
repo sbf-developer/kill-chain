@@ -1,0 +1,138 @@
+{
+  "id": "03-contested-comms",
+  "title": "Contested comms",
+  "summary": "The fused chain from scenario 02, run over a degraded and intermittently jammed network. Same sensors, same authority, worse maths.",
+  "tags": ["degraded", "contested", "network", "retransmit"],
+  "origin": { "lat": 0.0, "lon": 0.0 },
+  "target": {
+    "label": "TRK-1042",
+    "kind": "mobile ground",
+    "classification": "hostile",
+    "mobility": "mobile",
+    "description": "Synthetic track for latency analysis. Not a real entity, location or unit."
+  },
+  "evidence": {
+    "prior_hostile": 0.18,
+    "beta_hostile": { "dist": "beta", "a": 18, "b": 2 },
+    "beta_benign": { "dist": "beta", "a": 1.8, "b": 2.6 }
+  },
+  "policy": {
+    "pid_threshold": 0.80,
+    "escalation_threshold": 0.92,
+    "release_authority": "tactical",
+    "roe_posture": "defensive",
+    "cde_level": "CDE-1",
+    "cde_allowance": "CDE-2",
+    "max_recycles": 5
+  },
+  "nodes": [
+    {
+      "id": "cue",
+      "kind": "sensor",
+      "label": "Cue & detect",
+      "actor": "Space / air sensors",
+      "phase": "find",
+      "duration": { "dist": "lognormal", "median": 90, "sigma": 0.45 },
+      "note": "Detection itself is unaffected by the network; getting it out is not."
+    },
+    {
+      "id": "fuse",
+      "kind": "fusion",
+      "label": "Auto-fusion of 3 tracks",
+      "actor": "Edge fusion node",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 3, "mode": 8, "max": 25 },
+      "note": "Local processing still runs when the link is down."
+    },
+    {
+      "id": "geolocate",
+      "kind": "analysis",
+      "label": "Precision geolocation",
+      "actor": "Analyst + model",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 15, "mode": 40, "max": 120 },
+      "note": ""
+    },
+    {
+      "id": "fallback-geolocate",
+      "kind": "analysis",
+      "label": "Fallback geolocation",
+      "actor": "Analyst, single sensor",
+      "phase": "fix",
+      "duration": { "dist": "lognormal", "median": 180, "sigma": 0.5 },
+      "note": "Fusion degrades more often when the links are contested."
+    },
+    {
+      "id": "pid",
+      "kind": "analysis",
+      "label": "Classifier confirm",
+      "actor": "Analyst team, human on the loop",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 60, "sigma": 0.45 },
+      "note": ""
+    },
+    {
+      "id": "relay",
+      "kind": "network",
+      "label": "Contested network transit",
+      "actor": "Link-16 / SATCOM",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 45, "sigma": 0.9 },
+      "note": "Queueing, retransmission and crypto re-sync under jamming."
+    },
+    {
+      "id": "gate",
+      "kind": "decision",
+      "label": "Delegated release",
+      "actor": "Tactical commander",
+      "phase": "target",
+      "echelon": "tactical",
+      "duration": { "dist": "lognormal", "median": 30, "sigma": 0.4 },
+      "note": ""
+    },
+    {
+      "id": "tasking",
+      "kind": "tasking",
+      "label": "Machine-to-machine tasking",
+      "actor": "Mission system",
+      "phase": "engage",
+      "duration": { "dist": "triangular", "min": 2, "mode": 6, "max": 20 },
+      "note": ""
+    },
+    {
+      "id": "execute",
+      "kind": "effector",
+      "label": "Effect delivery window",
+      "actor": "Effector (abstract)",
+      "phase": "engage",
+      "duration": { "dist": "lognormal", "median": 150, "sigma": 0.3 },
+      "note": "Abstracted as a delay only. No weapon modelling is performed anywhere in this tool."
+    },
+    {
+      "id": "bda",
+      "kind": "assessment",
+      "label": "Automated BDA + confirm",
+      "actor": "ISR + analyst",
+      "phase": "assess",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.5 },
+      "note": "The assessment report is the most network-dependent product in the chain."
+    }
+  ],
+  "edges": [
+    { "from": "cue", "to": "fuse", "latency": 40, "note": "Sensor report across a degraded link" },
+    { "from": "fuse", "to": "geolocate", "p": 0.9, "latency": 35, "note": "" },
+    { "from": "fuse", "to": "fallback-geolocate", "p": 0.1, "latency": 60, "note": "Fusion degraded to a single sensor" },
+    { "from": "fallback-geolocate", "to": "pid", "latency": 60, "note": "" },
+    { "from": "geolocate", "to": "pid", "latency": 45, "note": "" },
+    { "from": "pid", "to": "relay", "latency": 60, "note": "Evidence package queued for transit" },
+    { "from": "relay", "to": "gate", "p": 0.88, "latency": { "dist": "triangular", "min": 20, "mode": 60, "max": 180 }, "note": "Delivered" },
+    { "from": "relay", "to": "relay", "p": 0.12, "latency": { "dist": "triangular", "min": 60, "mode": 150, "max": 420 }, "note": "Packet loss: retransmit and re-sync" },
+    { "from": "gate", "to": "tasking", "label": "approve", "latency": 40, "note": "Release" },
+    { "from": "gate", "to": "cue", "label": "reject", "latency": 90, "note": "Automatic re-cue" },
+    { "from": "gate", "to": "END_DENIED", "label": "deny", "note": "Policy prohibition" },
+    { "from": "tasking", "to": "execute", "latency": 25, "note": "" },
+    { "from": "execute", "to": "bda", "latency": 180, "note": "Assessment cue over a contested link" },
+    { "from": "bda", "to": "END" }
+  ],
+  "notes": "Purpose: show that a kill web is only as good as its transport. Compare against 02: the median moves modestly, the p95 and the abandonment rate move a lot, because retransmission and re-cue interact multiplicatively. This is the scenario where structural redundancy matters more than sensor quality."
+}

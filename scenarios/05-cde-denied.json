@@ -1,0 +1,141 @@
+{
+  "id": "05-cde-denied",
+  "title": "Rejected before it starts",
+  "summary": "Identical chain, identical sensors, identical track. The collateral estimate exceeds the commander's allowance, so the answer is no at every confidence.",
+  "tags": ["policy", "cde", "denied", "infeasible"],
+  "origin": { "lat": 0.0, "lon": 0.0 },
+  "target": {
+    "label": "TRK-1042",
+    "kind": "mobile ground",
+    "classification": "hostile",
+    "mobility": "mobile",
+    "description": "Synthetic track for latency analysis. Not a real entity, location or unit."
+  },
+  "evidence": {
+    "prior_hostile": 0.18,
+    "beta_hostile": { "dist": "beta", "a": 18, "b": 2 },
+    "beta_benign": { "dist": "beta", "a": 1.8, "b": 2.6 }
+  },
+  "policy": {
+    "pid_threshold": 0.90,
+    "escalation_threshold": 0.96,
+    "release_authority": "operational",
+    "roe_posture": "defensive",
+    "cde_level": "CDE-3",
+    "cde_allowance": "CDE-2",
+    "max_recycles": 4
+  },
+  "nodes": [
+    {
+      "id": "cue",
+      "kind": "sensor",
+      "label": "Cue & detect",
+      "actor": "Space / air sensors",
+      "phase": "find",
+      "duration": { "dist": "lognormal", "median": 90, "sigma": 0.45 },
+      "note": ""
+    },
+    {
+      "id": "fuse",
+      "kind": "fusion",
+      "label": "Auto-fusion of 3 tracks",
+      "actor": "Edge fusion node",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 3, "mode": 8, "max": 25 },
+      "note": ""
+    },
+    {
+      "id": "geolocate",
+      "kind": "analysis",
+      "label": "Precision geolocation",
+      "actor": "Analyst + model",
+      "phase": "fix",
+      "duration": { "dist": "triangular", "min": 15, "mode": 40, "max": 120 },
+      "note": ""
+    },
+    {
+      "id": "fallback-geolocate",
+      "kind": "analysis",
+      "label": "Fallback geolocation",
+      "actor": "Analyst, single sensor",
+      "phase": "fix",
+      "duration": { "dist": "lognormal", "median": 180, "sigma": 0.5 },
+      "note": ""
+    },
+    {
+      "id": "pid",
+      "kind": "analysis",
+      "label": "Classifier confirm",
+      "actor": "Analyst team, human on the loop",
+      "phase": "track",
+      "duration": { "dist": "lognormal", "median": 60, "sigma": 0.45 },
+      "note": ""
+    },
+    {
+      "id": "gate",
+      "kind": "decision",
+      "label": "Tactical review",
+      "actor": "Tactical commander",
+      "phase": "target",
+      "echelon": "tactical",
+      "duration": { "dist": "lognormal", "median": 30, "sigma": 0.4 },
+      "note": "Denies on the collateral check before it ever reaches PID."
+    },
+    {
+      "id": "auth",
+      "kind": "decision",
+      "label": "Operational release",
+      "actor": "Operational C2",
+      "phase": "target",
+      "echelon": "operational",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.6 },
+      "note": "Never reached: the tactical gate is a hard stop."
+    },
+    {
+      "id": "tasking",
+      "kind": "tasking",
+      "label": "Machine-to-machine tasking",
+      "actor": "Mission system",
+      "phase": "engage",
+      "duration": { "dist": "triangular", "min": 2, "mode": 6, "max": 20 },
+      "note": ""
+    },
+    {
+      "id": "execute",
+      "kind": "effector",
+      "label": "Effect delivery window",
+      "actor": "Effector (abstract)",
+      "phase": "engage",
+      "duration": { "dist": "lognormal", "median": 150, "sigma": 0.3 },
+      "note": "Abstracted as a delay only. No weapon modelling is performed anywhere in this tool."
+    },
+    {
+      "id": "bda",
+      "kind": "assessment",
+      "label": "Automated BDA + confirm",
+      "actor": "ISR + analyst",
+      "phase": "assess",
+      "duration": { "dist": "lognormal", "median": 240, "sigma": 0.5 },
+      "note": ""
+    }
+  ],
+  "edges": [
+    { "from": "cue", "to": "fuse", "latency": 10, "note": "" },
+    { "from": "fuse", "to": "geolocate", "p": 0.9, "latency": 8, "note": "" },
+    { "from": "fuse", "to": "fallback-geolocate", "p": 0.1, "latency": 12, "note": "" },
+    { "from": "fallback-geolocate", "to": "pid", "latency": 15, "note": "" },
+    { "from": "geolocate", "to": "pid", "latency": 12, "note": "" },
+    { "from": "pid", "to": "gate", "latency": 10, "note": "" },
+    { "from": "gate", "to": "tasking", "label": "approve", "latency": 8, "note": "Unreachable under this policy" },
+    { "from": "gate", "to": "auth", "label": "escalate", "latency": { "dist": "triangular", "min": 120, "mode": 330, "max": 720 }, "note": "Unreachable under this policy" },
+    { "from": "gate", "to": "cue", "label": "reject", "latency": 30, "note": "Unreachable under this policy" },
+    { "from": "gate", "to": "END_DENIED", "label": "deny", "note": "Collateral estimate exceeds allowance" },
+    { "from": "auth", "to": "tasking", "label": "approve", "latency": { "dist": "triangular", "min": 60, "mode": 180, "max": 420 }, "note": "" },
+    { "from": "auth", "to": "cue", "label": "reject", "latency": 120, "note": "" },
+    { "from": "auth", "to": "END_DENIED", "label": "deny", "note": "" },
+    { "from": "tasking", "to": "execute", "latency": 5, "note": "" },
+    { "from": "execute", "to": "bda", "latency": 45, "note": "" },
+    { "from": "bda", "to": "END" }
+  ],
+  "notes": "Purpose: prove the tool can say no, and that it says no cheaply. 100% of runs terminate at the tactical gate in about the time it takes to reach it. No sensor, network or tasking improvement moves this number, which is exactly the point: an infeasible engagement should be found in the planning phase, not discovered mid-cycle."
+}
