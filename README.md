@@ -4,7 +4,7 @@ A **kill-chain latency and authority simulator**: it models a targeting cycle as
 stochastic graph, runs it thousands of times, and shows you where the time
 actually goes — and why the answer is almost never "the sensor".
 
-![Analyst console](docs/console.png)
+![The analyst console: scenario KPIs, chain topology, latency distribution, one-run timeline and the PID threshold trade-off](docs/console.png)
 
 No weapons. No weaponeering. No real targets. A process model, a policy engine
 and an audit trail, over synthetic data. See [docs/SCOPE.md](docs/SCOPE.md) for
@@ -61,6 +61,12 @@ Same target class, different machines. All synthetic.
 | `05-cde-denied` | scenario 04 where the collateral estimate exceeds the allowance | — | — | — | **100%** |
 
 20,000 runs each, seed 7. Reproduce with `python tools/headline.py`.
+
+![Retained authority, tight PID: the escalation branch and the staff package it adds](docs/console-branch.png)
+
+*`04-tight-roe` in the console. The branch after the tactical gate is the
+escalation path: 40% of proposals leave for operational C2, which then applies the
+same numeric threshold to the same evidence package.*
 
 ## What the model actually shows
 

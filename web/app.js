@@ -348,8 +348,7 @@ function renderGraph(report) {
 
   const defs = svgEl('defs');
   const markers = [
-    ['arrow', '#2c333e'],
-    ['arrow', '#3a4351'],
+    ['arrow', '#454f5e'],
     ['arrow-recycle', '#8a5555'],
     ['arrow-escalate', '#7a6742'],
   ];
@@ -376,7 +375,7 @@ function renderGraph(report) {
   for (const edge of layout.edges) {
     const a = pos[edge.from];
     if (!a) continue;
-    const colour = edge.recycle ? '#8a5555' : edge.label === 'escalate' ? '#7a6742' : '#313947';
+    const colour = edge.recycle ? '#8a5555' : edge.label === 'escalate' ? '#7a6742' : '#3a4352';
     const markerId = edge.recycle ? 'arrow-recycle' : edge.label === 'escalate' ? 'arrow-escalate' : 'arrow';
     const dash = edge.recycle ? '5 4' : edge.label === 'escalate' ? '3 3' : null;
 
@@ -457,8 +456,10 @@ function renderGraph(report) {
     );
     edgeLayer.appendChild(pathNode);
 
+    // Only labels that fit the 28px gap between boxes: the re-task loop is
+    // called out explicitly, forward-gate labels live on the timeline instead.
     const parts = [];
-    if (edge.label && edge.label !== 'flow') parts.push(edge.label.toUpperCase());
+    if (edge.recycle) parts.push('REJECT');
     if (edge.p !== null && edge.p !== undefined && edge.p < 1) parts.push(`p=${edge.p}`);
     if (parts.length) {
       edgeLayer.appendChild(
@@ -502,7 +503,7 @@ function renderGraph(report) {
         height: GEO.NH,
         rx: 6,
         fill: '#0d1014',
-        stroke: node.kind === 'decision' ? '#3a3222' : '#1f242c',
+        stroke: node.kind === 'decision' ? '#3f3623' : '#242b35',
         'stroke-width': 1,
       }),
     );
@@ -521,14 +522,14 @@ function renderGraph(report) {
       svgEl(
         'text',
         { x: x + 12, y: y + 21, fill: '#dfe3ea', 'font-size': 12, 'font-weight': 500 },
-        truncate(node.label, node.kind === 'decision' ? 18 : 21),
+        truncate(node.label, node.kind === 'decision' ? 15 : 20),
       ),
     );
     group.appendChild(
       svgEl(
         'text',
         { x: x + 12, y: y + 35, fill: '#5f6877', 'font-size': 9 },
-        truncate(node.actor || node.kind, node.kind === 'decision' ? 19 : 27),
+        truncate(node.actor || node.kind, 21),
       ),
     );
     group.appendChild(
@@ -536,7 +537,7 @@ function renderGraph(report) {
         'text',
         {
           x: x + GEO.NW - 10,
-          y: y + 21,
+          y: y + 35,
           'text-anchor': 'end',
           fill: '#6f7a8c',
           'font-size': 10,
@@ -551,7 +552,7 @@ function renderGraph(report) {
           'text',
           {
             x: x + GEO.NW - 10,
-            y: y + 35,
+            y: y + 21,
             'text-anchor': 'end',
             fill: '#8a7440',
             'font-size': 8,
