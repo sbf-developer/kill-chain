@@ -5,6 +5,6 @@ targeting cycle as a stochastic graph, not the physics or employment of any
 weapon. See docs/SCOPE.md before using it for anything.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 BANNER = "UNCLASSIFIED // SYNTHETIC DATA // TRAINING & ANALYSIS ONLY"

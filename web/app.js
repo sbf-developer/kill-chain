@@ -2,15 +2,15 @@
 
 const NS = 'http://www.w3.org/2000/svg';
 const PHASE_COLORS = {
-  find: '#4ea1ff',
-  fix: '#35d0ba',
-  track: '#a78bfa',
-  target: '#f5b642',
-  engage: '#ff6b6b',
-  assess: '#8b98a8',
+  find: '#6ea8fe',
+  fix: '#5ec8b8',
+  track: '#a99bf5',
+  target: '#e0b05c',
+  engage: '#e07a7a',
+  assess: '#7c8698',
 };
 const PHASE_ORDER = ['find', 'fix', 'track', 'target', 'engage', 'assess'];
-const OUTCOME_COLORS = { approve: '#3ddc97', reject: '#f5b642', escalate: '#a78bfa', deny: '#ff6b6b' };
+const OUTCOME_COLORS = { approve: '#5ec8b8', reject: '#e0b05c', escalate: '#a99bf5', deny: '#e07a7a' };
 
 const state = {
   scenarios: [],
@@ -278,16 +278,16 @@ function renderKpis(report) {
   const linkShare = m.link_s / total;
   const blocked = (m.outcomes.denied || 0) + (m.outcomes.abandoned || 0);
   const tiles = [
-    { label: 'Median', value: fmtTime(m.p50_s), sub: 'p50, engaged runs', cls: 'accent' },
-    { label: 'p95', value: fmtTime(m.p95_s), sub: 'tail of the same runs', cls: 'warn' },
+    { label: 'Median', value: fmtTime(m.p50_s), sub: 'engaged runs', cls: 'accent' },
+    { label: 'p95', value: fmtTime(m.p95_s), sub: 'same runs', cls: 'warn' },
     {
       label: 'Chain success',
       value: pct(m.success_rate),
       sub: `${m.engaged.toLocaleString()} of ${m.runs.toLocaleString()}`,
       cls: m.success_rate > 0.9 ? 'good' : m.success_rate > 0.5 ? '' : 'bad',
     },
-    { label: 'Re-cycles', value: m.recycles_mean.toFixed(2), sub: 'mean per attempt', cls: '' },
-    { label: 'Handoff time', value: pct(linkShare), sub: 'of engaged cycle', cls: '' },
+    { label: 'Re-cycles', value: m.recycles_mean.toFixed(2), sub: 'per attempt', cls: '' },
+    { label: 'Handoff', value: pct(linkShare), sub: 'on the network', cls: '' },
     {
       label: 'Blocked',
       value: pct(blocked / m.runs),
@@ -299,17 +299,17 @@ function renderKpis(report) {
   const host = $('#kpis');
   host.innerHTML = '';
   for (const tile of tiles) {
-    const box = h('div', `kpi ${tile.cls}`.trim());
-    box.appendChild(h('div', 'kpi-label', tile.label));
-    box.appendChild(h('div', 'kpi-value', tile.value));
-    box.appendChild(h('div', 'kpi-sub', tile.sub));
+    const box = h('div', `stat ${tile.cls}`.trim());
+    box.appendChild(h('div', 'stat-label', tile.label));
+    box.appendChild(h('div', 'stat-value', tile.value));
+    box.appendChild(h('div', 'stat-sub', tile.sub));
     host.appendChild(box);
   }
 }
 
 /* ---------------------------------------------------------------- topology */
 
-const GEO = { NW: 164, NH: 54, GX: 206, GY: 74, PADX: 22, PADY: 18 };
+const GEO = { NW: 156, NH: 52, GX: 184, GY: 72, PADX: 22, PADY: 18 };
 
 function renderGraph(report) {
   const { layout } = report;
@@ -322,6 +322,7 @@ function renderGraph(report) {
     pos[node.id] = {
       x: GEO.PADX + node.layer * GEO.GX,
       y,
+      layer: node.layer,
       cx: GEO.PADX + node.layer * GEO.GX + GEO.NW / 2,
       cy: y + GEO.NH / 2,
     };
@@ -340,19 +341,17 @@ function renderGraph(report) {
 
   const svg = $('#graph');
   svg.innerHTML = '';
+  // Size is owned by CSS (width:100%, height:auto, min-width floor) so the
+  // graph fits the panel without a measurement pass that can race layout.
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
-  const available = Math.max(320, window.innerWidth - 112);
-  const rawScale = available / width;
-  const scale = rawScale >= 0.7 ? Math.min(1, rawScale) : 1;
-  svg.style.width = `${Math.round(width * scale)}px`;
-  svg.style.height = `${Math.round(height * scale)}px`;
 
   const defs = svgEl('defs');
   const markers = [
-    ['arrow', '#33455e'],
-    ['arrow-recycle', '#c2504f'],
-    ['arrow-escalate', '#c69a3c'],
+    ['arrow', '#2c333e'],
+    ['arrow', '#3a4351'],
+    ['arrow-recycle', '#8a5555'],
+    ['arrow-escalate', '#7a6742'],
   ];
   for (const [id, color] of markers) {
     const marker = svgEl('marker', {
@@ -360,8 +359,8 @@ function renderGraph(report) {
       viewBox: '0 0 10 10',
       refX: '9',
       refY: '5',
-      markerWidth: '5',
-      markerHeight: '5',
+      markerWidth: '6',
+      markerHeight: '6',
       orient: 'auto-start-reverse',
     });
     marker.appendChild(svgEl('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: color }));
@@ -377,7 +376,7 @@ function renderGraph(report) {
   for (const edge of layout.edges) {
     const a = pos[edge.from];
     if (!a) continue;
-    const colour = edge.recycle ? '#c2504f' : edge.label === 'escalate' ? '#c69a3c' : '#33455e';
+    const colour = edge.recycle ? '#8a5555' : edge.label === 'escalate' ? '#7a6742' : '#313947';
     const markerId = edge.recycle ? 'arrow-recycle' : edge.label === 'escalate' ? 'arrow-escalate' : 'arrow';
     const dash = edge.recycle ? '5 4' : edge.label === 'escalate' ? '3 3' : null;
 
@@ -443,16 +442,24 @@ function renderGraph(report) {
       d: path,
       fill: 'none',
       stroke: colour,
-      'stroke-width': 1.1,
+      'stroke-width': 1.2,
       'marker-end': `url(#${markerId})`,
     });
     if (dash) pathNode.setAttribute('stroke-dasharray', dash);
+    pathNode.appendChild(
+      svgEl(
+        'title',
+        {},
+        `${edge.from} to ${edge.to} · handoff ${fmtTime(edge.mean_link_s || 0)}${
+          edge.p !== null && edge.p !== undefined ? ` · p=${edge.p}` : ''
+        }`,
+      ),
+    );
     edgeLayer.appendChild(pathNode);
 
     const parts = [];
     if (edge.label && edge.label !== 'flow') parts.push(edge.label.toUpperCase());
     if (edge.p !== null && edge.p !== undefined && edge.p < 1) parts.push(`p=${edge.p}`);
-    if (edge.mean_link_s) parts.push(fmtTime(edge.mean_link_s));
     if (parts.length) {
       edgeLayer.appendChild(
         svgEl(
@@ -461,10 +468,10 @@ function renderGraph(report) {
             x: mid.x,
             y: mid.y - (edge.recycle ? 0 : 4),
             'text-anchor': 'middle',
-            fill: edge.recycle ? '#d98b8a' : '#71809a',
+            fill: edge.recycle ? '#8f5f5f' : '#4f5866',
             'font-size': 9,
             'font-family': 'ui-monospace, monospace',
-            stroke: '#11161f',
+            stroke: '#0a0b0e',
             'stroke-width': 3,
             'paint-order': 'stroke',
           },
@@ -476,34 +483,51 @@ function renderGraph(report) {
 
   for (const node of layout.nodes) {
     const { x, y } = pos[node.id];
-    const phaseColor = PHASE_COLORS[node.phase] || '#8b98a8';
+    const phaseColor = PHASE_COLORS[node.phase] || '#7c8698';
     const group = svgEl('g', { cursor: 'pointer' });
+    group.appendChild(
+      svgEl(
+        'title',
+        {},
+        `${node.label}\n${node.actor || node.kind} · ${node.phase} · ${node.kind}\nmean ${fmtTime(
+          node.mean_s,
+        )} · ${pct(node.share || 0)} of cycle`,
+      ),
+    );
     group.appendChild(
       svgEl('rect', {
         x,
         y,
         width: GEO.NW,
         height: GEO.NH,
-        rx: 7,
-        fill: '#141b26',
-        stroke: node.kind === 'decision' ? '#4a3a1d' : '#2a3547',
-        'stroke-width': node.kind === 'decision' ? 1.4 : 1,
+        rx: 6,
+        fill: '#0d1014',
+        stroke: node.kind === 'decision' ? '#3a3222' : '#1f242c',
+        'stroke-width': 1,
       }),
     );
     group.appendChild(
-      svgEl('rect', { x: x + 1, y: y + 8, width: 3.5, height: GEO.NH - 16, rx: 2, fill: phaseColor }),
+      svgEl('rect', {
+        x: x + 1,
+        y: y + 11,
+        width: 2.5,
+        height: GEO.NH - 22,
+        rx: 1.25,
+        fill: phaseColor,
+        opacity: 0.9,
+      }),
     );
     group.appendChild(
       svgEl(
         'text',
-        { x: x + 13, y: y + 21, fill: '#e7ecf5', 'font-size': 11.5, 'font-weight': 600 },
+        { x: x + 12, y: y + 21, fill: '#dfe3ea', 'font-size': 12, 'font-weight': 500 },
         truncate(node.label, node.kind === 'decision' ? 18 : 21),
       ),
     );
     group.appendChild(
       svgEl(
         'text',
-        { x: x + 13, y: y + 35, fill: '#7d8ba1', 'font-size': 9 },
+        { x: x + 12, y: y + 35, fill: '#5f6877', 'font-size': 9 },
         truncate(node.actor || node.kind, node.kind === 'decision' ? 19 : 27),
       ),
     );
@@ -514,7 +538,7 @@ function renderGraph(report) {
           x: x + GEO.NW - 10,
           y: y + 21,
           'text-anchor': 'end',
-          fill: phaseColor,
+          fill: '#6f7a8c',
           'font-size': 10,
           'font-family': 'ui-monospace, monospace',
         },
@@ -529,7 +553,7 @@ function renderGraph(report) {
             x: x + GEO.NW - 10,
             y: y + 35,
             'text-anchor': 'end',
-            fill: '#c69a3c',
+            fill: '#8a7440',
             'font-size': 8,
             'letter-spacing': '0.08em',
           },
@@ -660,7 +684,7 @@ function renderHistogram(report) {
 
   for (let i = 0; i <= 3; i += 1) {
     const y = padT + (plotH * i) / 3;
-    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: y, y2: y, stroke: '#1a2230' }));
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: y, y2: y, stroke: '#15181f' }));
     svg.appendChild(
       svgEl(
         'text',
@@ -681,17 +705,17 @@ function renderHistogram(report) {
         y,
         width,
         height,
-        fill: '#2f6ea8',
-        opacity: 0.75,
+        fill: '#3d6fa8',
+        opacity: 0.55,
         rx: 1,
       }),
     );
   });
 
   const markers = [
-    ['p50', report.metrics.p50_s, '#4ea1ff'],
-    ['p95', report.metrics.p95_s, '#f5b642'],
-    ['p99', report.metrics.p99_s, '#ff6b6b'],
+    ['p50', report.metrics.p50_s, '#6ea8fe'],
+    ['p95', report.metrics.p95_s, '#e0b05c'],
+    ['p99', report.metrics.p99_s, '#e07a7a'],
   ];
   for (const [label, value, colour] of markers) {
     if (value === null || value === undefined) continue;
@@ -739,9 +763,8 @@ function renderPhases(report) {
   list.innerHTML = '';
   for (const item of report.metrics.contributions.slice(0, 6)) {
     const li = h('li');
+    li.appendChild(h('span', null, item.label));
     li.appendChild(h('span', 't', `${Math.round(item.mean_s)}s`));
-    li.appendChild(document.createTextNode(` · ${item.label} `));
-    li.appendChild(h('span', 'a', `${item.actor || ''} — ${pct(item.share)}`));
     list.appendChild(li);
   }
 }
@@ -794,9 +817,9 @@ function renderTimeline(report) {
     const start = x(segment.start);
     const width = Math.max(1, x(segment.end) - start);
     if (segment.kind === 'activity') {
-      const colour = PHASE_COLORS[segment.detail] || '#8b98a8';
+      const colour = PHASE_COLORS[segment.detail] || '#7c8698';
       svg.appendChild(
-        svgEl('rect', { x: start, y: laneActivity.y, width, height: laneActivity.h, fill: colour, opacity: 0.72, rx: 2 }),
+        svgEl('rect', { x: start, y: laneActivity.y, width, height: laneActivity.h, fill: colour, opacity: 0.5, rx: 1.5 }),
       );
       if (width > 54) {
         svg.appendChild(
@@ -815,7 +838,7 @@ function renderTimeline(report) {
       }
     } else if (segment.kind === 'link') {
       svg.appendChild(
-        svgEl('rect', { x: start, y: laneLink.y, width, height: laneLink.h, fill: '#3a4a63', rx: 1.5 }),
+        svgEl('rect', { x: start, y: laneLink.y, width, height: laneLink.h, fill: '#20262f', rx: 1 }),
       );
     } else if (segment.kind === 'gate') {
       const outcome = (segment.label || '').split(' ')[0].toLowerCase();
@@ -893,7 +916,7 @@ function renderTornado(report) {
   const maxDelta = Math.max(...rows.map((row) => Math.abs(row.delta_p95_s)), 1);
   const scale = (W - zero - 52) / maxDelta;
 
-  svg.appendChild(svgEl('line', { x1: zero, x2: zero, y1: 4, y2: H - 18, stroke: '#2a3547' }));
+  svg.appendChild(svgEl('line', { x1: zero, x2: zero, y1: 4, y2: H - 18, stroke: '#1e232c' }));
 
   rows.forEach((row, index) => {
     const y = 14 + index * 26;
@@ -913,8 +936,8 @@ function renderTornado(report) {
         width: Math.max(1, width),
         height: 13,
         rx: 2,
-        fill: positive ? '#3ddc97' : '#ff6b6b',
-        opacity: 0.8,
+        fill: positive ? '#5ec8b8' : '#e07a7a',
+        opacity: 0.5,
       }),
     );
     svg.appendChild(
@@ -993,7 +1016,7 @@ function drawTailChart(svg, points, threshold) {
 
   for (let i = 0; i <= 3; i += 1) {
     const gy = padT + (plotH * i) / 3;
-    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: gy, y2: gy, stroke: '#1a2230' }));
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: gy, y2: gy, stroke: '#15181f' }));
     svg.appendChild(
       svgEl('text', { x: padL - 6, y: gy + 3, 'text-anchor': 'end', class: 'tick' }, fmtTime(maxP95 * (1 - i / 3))),
     );
@@ -1006,21 +1029,21 @@ function drawTailChart(svg, points, threshold) {
     `L ${x(usable[usable.length - 1].threshold)} ${padT + plotH}`,
     'Z',
   ].join(' ');
-  svg.appendChild(svgEl('path', { d: areaPoints, fill: '#ff6b6b', opacity: 0.12 }));
+  svg.appendChild(svgEl('path', { d: areaPoints, fill: '#e07a7a', opacity: 0.07 }));
 
   const line = usable.map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.threshold)} ${y(point.p95_s)}`).join(' ');
-  svg.appendChild(svgEl('path', { d: line, fill: 'none', stroke: '#4ea1ff', 'stroke-width': 1.8 }));
+  svg.appendChild(svgEl('path', { d: line, fill: 'none', stroke: '#6ea8fe', 'stroke-width': 1.4 }));
 
   for (const point of usable) {
-    svg.appendChild(svgEl('circle', { cx: x(point.threshold), cy: y(point.p95_s), r: 2, fill: '#4ea1ff' }));
+    svg.appendChild(svgEl('circle', { cx: x(point.threshold), cy: y(point.p95_s), r: 1.6, fill: '#6ea8fe' }));
   }
 
   const markerX = x(threshold);
   svg.appendChild(
-    svgEl('line', { x1: markerX, x2: markerX, y1: padT - 4, y2: padT + plotH, stroke: '#f5b642', 'stroke-dasharray': '4 3' }),
+    svgEl('line', { x1: markerX, x2: markerX, y1: padT - 4, y2: padT + plotH, stroke: '#e0b05c', 'stroke-dasharray': '4 3' }),
   );
   svg.appendChild(
-    svgEl('text', { x: markerX, y: 9, 'text-anchor': 'middle', fill: '#f5b642', class: 'tick' }, `pid ${threshold.toFixed(2)}`),
+    svgEl('text', { x: markerX, y: 9, 'text-anchor': 'middle', fill: '#e0b05c', class: 'tick' }, `pid ${threshold.toFixed(2)}`),
   );
 
   for (const [index, value] of [minT, (minT + maxT) / 2, maxT].entries()) {
@@ -1059,7 +1082,7 @@ function drawEvidenceChart(svg, points, threshold) {
 
   for (let i = 0; i <= 3; i += 1) {
     const gy = padT + (plotH * i) / 3;
-    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: gy, y2: gy, stroke: '#1a2230' }));
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: gy, y2: gy, stroke: '#15181f' }));
     svg.appendChild(
       svgEl('text', { x: padL - 6, y: gy + 3, 'text-anchor': 'end', class: 'tick' }, `${((1 - i / 3) * 100).toFixed(0)}%`),
     );
@@ -1068,18 +1091,18 @@ function drawEvidenceChart(svg, points, threshold) {
   const posterior = points
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.threshold)} ${y(point.posterior_hostile)}`)
     .join(' ');
-  svg.appendChild(svgEl('path', { d: posterior, fill: 'none', stroke: '#f5b642', 'stroke-width': 1.8 }));
+  svg.appendChild(svgEl('path', { d: posterior, fill: 'none', stroke: '#e0b05c', 'stroke-width': 1.4 }));
 
   const benign = points
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.threshold)} ${padT + plotH - (point.p_release_benign * 1000 / maxPer1000) * plotH}`)
     .join(' ');
   svg.appendChild(
-    svgEl('path', { d: benign, fill: 'none', stroke: '#8b98a8', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }),
+    svgEl('path', { d: benign, fill: 'none', stroke: '#7c8698', 'stroke-width': 1, 'stroke-dasharray': '3 3' }),
   );
 
   const markerX = x(threshold);
   svg.appendChild(
-    svgEl('line', { x1: markerX, x2: markerX, y1: padT - 4, y2: padT + plotH, stroke: '#f5b642', 'stroke-dasharray': '4 3', opacity: 0.7 }),
+    svgEl('line', { x1: markerX, x2: markerX, y1: padT - 4, y2: padT + plotH, stroke: '#e0b05c', 'stroke-dasharray': '4 3', opacity: 0.7 }),
   );
 
   for (const [index, value] of [minT, (minT + maxT) / 2, maxT].entries()) {
@@ -1166,3 +1189,5 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 boot();
+
+
